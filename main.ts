@@ -9,9 +9,10 @@
 //     batch after it the rules run on indicators already seeded.
 //   - Entry, on a bar's close (filled at the next open): EMA(8) crosses above EMA(21) (above it
 //     now, at or under it on the symbol's bar before) AND the close sits above EMA(50) (the trend
-//     filter), on a symbol it does not hold. Until EMA(50) is seeded no entry can clear the filter.
-//   - Exit, the whole position: EMA(21) crosses above EMA(8), or the position worth at least 35%
-//     over its cost at the close, or at least 15% under it. The sell signal holds from its cross
+//     filter) but no more than 20% over it, on a symbol it does not hold. Until EMA(50) is seeded
+//     no entry can clear the filter.
+//   - Exit, the whole position: EMA(21) crosses above EMA(8), or the position worth at least 30%
+//     over its cost at the close, or at least 12% under it. The sell signal holds from its cross
 //     while EMA(21) stays above EMA(8), so a sell the market refuses (no bar, or a price past the
 //     slippage cap at the next open) or the order cap leaves out is sent again on the symbol's next
 //     bar while its reason still holds: the signal, or the position past the ROI or the stoploss at
@@ -35,10 +36,10 @@ import { BPS, runBars, type Bar, type BarsState, type BuyInput, type SellInput }
 const FAST_BARS = 8;
 const SLOW_BARS = 21;
 const TREND_BARS = 50;
-/** Take profit +35%: worth 27/20 of its cost. */
-const ROI = [27n, 20n] as const;
-/** Stoploss -15%: worth 17/20 of its cost. */
-const STOP = [17n, 20n] as const;
+/** Take profit +30%: worth 13/10 of its cost. */
+const ROI = [13n, 10n] as const;
+/** Stoploss -12%: worth 22/25 of its cost. */
+const STOP = [22n, 25n] as const;
 const MAX_SLIPPAGE_BPS = 100;
 
 /** One EMA: the closes it has seen until it starts, then its value. */
@@ -106,7 +107,8 @@ await runBars({
       const s = push(bar);
       fresh.add(bar.symbol);
       if (s.gap === null || s.now === null || bar.v === '0') continue;
-      if (s.now > 0 && s.gap <= 0 && s.trend.value !== null && Number(bar.c) > s.trend.value) crossUp.add(bar.symbol);
+      const c = Number(bar.c);
+      if (s.now > 0 && s.gap <= 0 && s.trend.value !== null && c > s.trend.value && c * 5 <= s.trend.value * 6) crossUp.add(bar.symbol);
       if (s.now < 0 && s.gap >= 0) s.down = true;
     }
     if (state.warmingUp) return [];
